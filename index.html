@@ -101,7 +101,7 @@
   </div>
   <div class="tut-section">
     <div class="tut-label">CONTROLS</div>
-    <div class="tut-text">MOVE: ← → ARROWS / JOYSTICK<br>FIRE: SPACE / RESOLVE BUTTON<br>POWER-UP: ENTER / PWR BUTTON<br>PAUSE: ESC / ⏸ BUTTON</div>
+    <div class="tut-text">MOVE: ← → ARROWS / JOYSTICK<br>FIRE: SPACE / RESOLVE BUTTON<br>POWER-UP: ENTER / PWR BUTTON<br>PAUSE: ESC / PAUSE BUTTON</div>
   </div>
   <div class="tut-section">
     <div class="tut-label">TIPS</div>
@@ -123,7 +123,7 @@
     <button id="submitBtn">SUBMIT SCORE</button>
   </div>
   <div id="emailSection">
-    <div style="color:#555;font-size:7px;margin-bottom:8px;text-align:center;line-height:2;">ENTER EMAIL TO WIN A PRIZE<br><span style="color:#333;font-size:6px;">OPTIONAL · KEPT PRIVATE</span></div>
+    <div style="color:#555;font-size:7px;margin-bottom:8px;text-align:center;line-height:2;">ENTER EMAIL TO WIN A STAR WARS LEGO SET<br><span style="color:#333;font-size:6px;">OPTIONAL · KEPT PRIVATE</span></div>
     <input id="emailInput" type="email" autocomplete="email" spellcheck="false" placeholder="you@company.com">
     <button id="emailBtn">ENTER PRIZE DRAW</button>
     <div id="emailThanks">YOU'RE IN THE DRAW!</div>
@@ -194,10 +194,11 @@ function updateSoundIcon() {
 updateSoundIcon();
 
 soundBtn.addEventListener('click', () => {
+  getAudio(); // Unlock audio on click
   soundEnabled = !soundEnabled;
   updateSoundIcon();
 });
-soundBtn.addEventListener('touchstart', e => { e.preventDefault(); soundBtn.click(); }, {passive:false});
+soundBtn.addEventListener('touchstart', e => { e.preventDefault(); getAudio(); soundBtn.click(); }, {passive:false});
 
 // ── Pause Control ─────────────────────────────────────────────────────────────
 let paused = false;
@@ -232,7 +233,7 @@ function togglePause() {
   if (!paused) { lastTime = performance.now(); loop(lastTime); }
 }
 pauseBtn.addEventListener('click', togglePause);
-pauseBtn.addEventListener('touchstart', e => { e.preventDefault(); togglePause(); }, {passive:false});
+pauseBtn.addEventListener('touchstart', e => { e.preventDefault(); getAudio(); togglePause(); }, {passive:false});
 
 // ── Tutorial ──────────────────────────────────────────────────────────────────
 let tutorialShown = false;
@@ -266,12 +267,14 @@ function hideTutorial() {
   if (tutorialOverlay.style.display === 'none') return;
   tutorialOverlay.style.display = 'none';
   tutorialShown = true;
+  // Unlock audio on mobile
+  getAudio();
   // Go straight into the game after tutorial
   state='playing';levelKills=0;reset(true);lastTime=performance.now();loop(lastTime);
 }
 
-tutorialOverlay.addEventListener('click', hideTutorial);
-tutorialOverlay.addEventListener('touchstart', e => { e.preventDefault(); hideTutorial(); }, {passive:false});
+tutorialOverlay.addEventListener('click', () => { getAudio(); hideTutorial(); });
+tutorialOverlay.addEventListener('touchstart', e => { e.preventDefault(); getAudio(); hideTutorial(); }, {passive:false});
 document.addEventListener('keydown', e => {
   if (tutorialOverlay.style.display === 'flex' && (e.code === 'Space' || e.code === 'Enter')) {
     e.preventDefault();
@@ -299,14 +302,46 @@ function sprH(spr,scale=1){return spr.length*(Math.max(1,Math.floor(gW()/240*sca
 
 // ── Audio ─────────────────────────────────────────────────────────────────────
 let audioCtx=null;
-function getAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();return audioCtx;}
+let audioUnlocked=false;
+function getAudio(){
+  if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended'){
+    audioCtx.resume().then(()=>{
+      audioUnlocked=true;
+      // Play a silent buffer to fully unlock on iOS
+      const silentBuffer = audioCtx.createBuffer(1, 1, 22050);
+      const source = audioCtx.createBufferSource();
+      source.buffer = silentBuffer;
+      source.connect(audioCtx.destination);
+      source.start(0);
+    }).catch(()=>{});
+  } else {
+    audioUnlocked=true;
+  }
+  return audioCtx;
+}
+// Unlock audio on first touch/click anywhere
+document.addEventListener('touchstart', function unlockAudio(){
+  getAudio();
+  document.removeEventListener('touchstart', unlockAudio);
+}, {passive:true});
+document.addEventListener('click', function unlockAudioClick(){
+  getAudio();
+  document.removeEventListener('click', unlockAudioClick);
+}, {passive:true});
 function playTone({freq=440,freq2=null,type='square',vol=0.18,attack=0.005,decay=0.08,release=0.05,dur=0.12}={}){
   if(!soundEnabled)return;
-  try{const ac=getAudio(),now=ac.currentTime,osc=ac.createOscillator(),gain=ac.createGain();osc.connect(gain);gain.connect(ac.destination);osc.type=type;osc.frequency.setValueAtTime(freq,now);if(freq2)osc.frequency.exponentialRampToValueAtTime(freq2,now+dur);gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(vol,now+attack);gain.gain.linearRampToValueAtTime(vol*.6,now+attack+decay);gain.gain.linearRampToValueAtTime(0,now+dur+release);osc.start(now);osc.stop(now+dur+release+0.05);}catch(e){}
+  try{
+    const ac=getAudio();
+    const now=ac.currentTime,osc=ac.createOscillator(),gain=ac.createGain();osc.connect(gain);gain.connect(ac.destination);osc.type=type;osc.frequency.setValueAtTime(freq,now);if(freq2)osc.frequency.exponentialRampToValueAtTime(freq2,now+dur);gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(vol,now+attack);gain.gain.linearRampToValueAtTime(vol*.6,now+attack+decay);gain.gain.linearRampToValueAtTime(0,now+dur+release);osc.start(now);osc.stop(now+dur+release+0.05);
+  }catch(e){}
 }
 function playNoise({vol=0.15,dur=0.1,freq=800,freqEnd=100}={}){
   if(!soundEnabled)return;
-  try{const ac=getAudio(),now=ac.currentTime,buf=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;const src=ac.createBufferSource(),gain=ac.createGain(),filt=ac.createBiquadFilter();filt.type='bandpass';filt.frequency.setValueAtTime(freq,now);filt.frequency.exponentialRampToValueAtTime(freqEnd,now+dur);src.buffer=buf;src.connect(filt);filt.connect(gain);gain.connect(ac.destination);gain.gain.setValueAtTime(vol,now);gain.gain.exponentialRampToValueAtTime(0.001,now+dur);src.start(now);src.stop(now+dur+0.05);}catch(e){}
+  try{
+    const ac=getAudio();
+    const now=ac.currentTime,buf=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;const src=ac.createBufferSource(),gain=ac.createGain(),filt=ac.createBiquadFilter();filt.type='bandpass';filt.frequency.setValueAtTime(freq,now);filt.frequency.exponentialRampToValueAtTime(freqEnd,now+dur);src.buffer=buf;src.connect(filt);filt.connect(gain);gain.connect(ac.destination);gain.gain.setValueAtTime(vol,now);gain.gain.exponentialRampToValueAtTime(0.001,now+dur);src.start(now);src.stop(now+dur+0.05);
+  }catch(e){}
 }
 const SFX={
   shoot:        ()=>playTone({freq:880,freq2:440,type:'square',vol:0.12,dur:0.06,attack:0.001,decay:0.04}),
@@ -503,7 +538,31 @@ async function addToLB(name,sc,inc){
   try{await fetch(`${SB_URL}/rest/v1/leaderboard`,{method:'POST',headers:{...SB_H,'Prefer':'return=minimal'},body:JSON.stringify({name:name.toUpperCase().padEnd(3,'·').slice(0,3),score:sc,incidents:inc})});const lb=await loadLB();const entry=lb.find(e=>e.name===name.toUpperCase().padEnd(3,'·').slice(0,3)&&e.score===sc);return{lb,entry};}
   catch{return{lb:[],entry:null};}
 }
-async function saveEmail(name,sc,email){try{const body=new URLSearchParams({'form-name':'prize-draw','bot-field':'',name,score:sc,email});await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body.toString()});}catch(e){console.warn('Form submit failed',e);}}
+async function saveEmail(name,sc,email){
+  // HubSpot Form Submission
+  const portalId = '46939668';
+  const formGuid = 'a387a832-a142-403a-a103-feede6ed1025';
+  
+  try {
+    await fetch(`https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formGuid}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fields: [
+          { name: 'email', value: email },
+          { name: 'firstname', value: name },
+          { name: 'game_score', value: String(sc) }
+        ],
+        context: {
+          pageUri: window.location.href,
+          pageName: 'RESOLVE.AI Game'
+        }
+      })
+    });
+  } catch(e) {
+    console.warn('HubSpot form submit failed', e);
+  }
+}
 
 function showLBOverlay(){
   SFX.gameOver();
@@ -834,7 +893,7 @@ function drawPauseOverlay(){
   ctx.fillText('PAUSED',W/2,H/2-20);
   ctx.fillStyle='#888';
   ctx.font=px(Math.max(5,Math.floor(W/48)));
-  ctx.fillText('PRESS ESC OR ⏸ TO RESUME',W/2,H/2+20);
+  ctx.fillText('PRESS ESC OR PLAY TO RESUME',W/2,H/2+20);
 }
 
 // ── Main game draw ────────────────────────────────────────────────────────────
@@ -1026,9 +1085,9 @@ function handleFire(){
   else if(state==='levelclear'&&performance.now()-levelClearAt>1000){stopOverlay();state='playing';levelKills=0;reset(false);lastTime=performance.now();loop(lastTime);}
   else if(state==='playing'&&!paused)shoot();
 }
-document.getElementById('fireBtn').addEventListener('touchstart',e=>{e.preventDefault();handleFire();},{passive:false});
+document.getElementById('fireBtn').addEventListener('touchstart',e=>{e.preventDefault();getAudio();handleFire();},{passive:false});
 document.getElementById('fireBtn').addEventListener('mousedown',handleFire);
-document.getElementById('powerBtn').addEventListener('touchstart',e=>{e.preventDefault();usePower();},{passive:false});
+document.getElementById('powerBtn').addEventListener('touchstart',e=>{e.preventDefault();getAudio();usePower();},{passive:false});
 document.getElementById('powerBtn').addEventListener('mousedown',usePower);
 document.addEventListener('keydown',e=>{
   if((e.code==='Space'||e.code==='Enter')&&state!=='playing')handleFire();
