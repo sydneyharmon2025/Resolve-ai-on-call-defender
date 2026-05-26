@@ -89,7 +89,7 @@
   <div class="tut-title">HOW TO PLAY</div>
   <div class="tut-section">
     <div class="tut-label">MISSION</div>
-    <div class="tut-text">DEFEND YOUR SYSTEMS FROM INCIDENTS<br>PROTECT THE ENGINEERS' SLEEP</div>
+    <div class="tut-text">DEFEND PROD FROM INCIDENTS WITH RESOLVE.<br>PROTECT THE KID. THIS IS THE WAY.</div>
   </div>
   <div class="tut-section">
     <div class="tut-label">ENEMIES</div>
@@ -1075,9 +1075,8 @@ function drawMenu(){
     drawSprite(s,Math.floor(W/2+(i-2)*Math.floor(W/5.5)-sprW(s)/2),y,col);
   });
   y+=sprH(BOT_P0)+pad*3;
-  ctx.fillStyle='#777';ctx.font=px(fSm);ctx.fillText('"3AM CALLED.',W/2,y);y+=fSm+pad;
-  ctx.fillStyle='#888';ctx.fillText('IT WANTS ITS ENGINEER BACK."',W/2,y);y+=fSm+pad*3;
-  if(Math.floor(Date.now()/600)%2===0){ctx.fillStyle=LIME;ctx.font=px(fMed+1);ctx.fillText('> PRESS RESOLVE TO DEPLOY <',W/2,y);}
+  ctx.fillStyle='#777';ctx.font=px(fSm);ctx.fillText('ALL PRODUCTION SYSTEMS GO.',W/2,y);y+=fSm+pad*3;
+  if(Math.floor(Date.now()/600)%2===0){ctx.fillStyle=LIME;ctx.font=px(fMed+1);ctx.fillText('> PRESS RESOLVE AT WILL <',W/2,y);}
   y+=fMed+pad*3;
   [[BOT_NOISE,LIME,'NOISE'],[BOT_PAGER,ORANGE,'PAGED ALERT'],[BOT_P0,RED,'SEV0']].forEach(([s,c,l],i)=>{
     const lx=W/2+(i-1)*Math.floor(W/3.2);
